@@ -12,7 +12,9 @@ public abstract class SoundWave implements SoundWaveInterface {
     double frequency;   // the frequency of the wave. measured in hertz, Hz
     double amplitude;   // the amplitude of the wave. measured in decibels, dB
     double phase;       // the phase of the wave. measured in seconds, s
-    String id;
+
+    String id;          // identifies the wave. unique in a wave map.
+    String waveMapId;    // the id of wave map the wave is in.
 
     public SoundWave(double frequency, double amplitude, double phase, String id) {
         if (!(frequency > 0)) throw new IllegalArgumentException("SoundWave frequency must be greater than 0");
@@ -22,6 +24,8 @@ public abstract class SoundWave implements SoundWaveInterface {
         this.amplitude = amplitude;
         this.phase = phase;
         this.id = id;
+
+        this.waveMapId = "main";
     }
 
     // getters

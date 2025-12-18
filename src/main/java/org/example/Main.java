@@ -31,7 +31,7 @@ public class Main {
 
         byte[] buffer = new byte[2]; // 16-bit = 2 bytes per sample
 
-        HashMap<String, SoundWave> soundWaveHashMap = new HashMap<>();
+        WaveMap mainWaveMap = new WaveMap("main");
 
         // scanner for reading commands
         Scanner commandScanner = new Scanner(System.in);
@@ -57,9 +57,12 @@ public class Main {
                 case "-h":
                     System.out.println("\nOrpheus Command Help\n");
                     System.out.println("help, -h : display this menu");
-                    System.out.println("man, -m [COMMAND_NAME] : display info about a command");
+                    System.out.println("man, -m : display info about a command");
                     System.out.println("version, -v : display the version of Orpheus being used");
                     System.out.println("wave, -w : create a new sound wave");
+                    System.out.println("list, -l : list existing waves");
+                    System.out.println("remove, -r : remove a wave from a wavemap");
+                    System.out.println("wavemap, -wm : create a new wavemap");
                     break;
 
                 // man command: provides information about a specific command
@@ -80,7 +83,7 @@ public class Main {
                             System.out.println(" - Displays a list of all possible commands.");
                             break;
                         case "man":
-                        case "m":
+                        case "-m":
                         case "":
                         case " ":
                             System.out.println("man, -m");
@@ -93,7 +96,7 @@ public class Main {
                             System.out.println("wave, -w");
                             System.out.println(" - USAGE: wave [ID] [WAVE_TYPE] [FREQUENCY] [AMPLITUDE] [PHASE]");
                             System.out.println(" - EXAMPLE: wave newSineWave sin 440 0.8 0");
-                            System.out.println(" - Creates a new wave, and adds it to the wave map. If a wave with the " +
+                            System.out.println(" - Creates a new wave, and adds it to the main wave map. If a wave with the " +
                                                   "specified ID already exists, it will be replaced by the new one.");
                             System.out.println(" - Waves have 4 base types:");
                             System.out.println("   -> sin: sine waves;");
@@ -104,14 +107,21 @@ public class Main {
                         case "list":
                         case "-l":
                             System.out.println("list, -l");
-                            System.out.println(" - USAGE: list");
-                            System.out.println(" - Prints the existing waves.");
+                            System.out.println(" - USAGE: list ; list [WAVEMAP_ID]");
+                            System.out.println(" - Prints the existing waves in a certain wavemap. " +
+                                                "If no wavemap is specified, prints the waves of all wavemaps.");
                             break;
                         case "remove":
                         case "-r":
                             System.out.println("remove, -r");
-                            System.out.println(" - USAGE: remove [WAVE_ID]");
-                            System.out.println(" - If a wave with the specified ID exists in the wave map, it will be removed.");
+                            System.out.println(" - USAGE: remove [WAVE_ID] [WAVEMAP_ID]");
+                            System.out.println(" - If a wave with the specified ID exists in the specified wave map, it will be removed.");
+                        case "wavemap":
+                        case "-wm":
+                            System.out.println("wavemap, -wm");
+                            System.out.println(" - USAGE: wavemap [WAVEMAP_ID]");
+                            System.out.println(" - Creates a new wavemap with the specified ID.");
+                            break;
                         default:
                             System.out.println("Error: command " + userInputSplit[1] + " does not exist");
                             break;
@@ -122,7 +132,7 @@ public class Main {
                 case "wave":
                 case "-w":
                     if (userInputSplit.length != 6) {
-                        System.out.println("wave requires 6 arguments, found " + userInputSplit.length);
+                        System.out.println("wave requires 5 arguments, found " + (userInputSplit.length - 1));
                         break;
                     }
 
@@ -159,37 +169,109 @@ public class Main {
                             break;
                     }
                     if (!(newSoundWave == null)) {
-                        System.out.println("Created new wave:");
+                        // the new wave is put in the main wavemap
+                        mainWaveMap.getSoundwaveMap().put(newId, newSoundWave);
+                        System.out.println("Created new wave in the main wavemap:");
                         System.out.println(newSoundWave);
-                        soundWaveHashMap.put(newId, newSoundWave);
                     }
                     break;
 
                 // remove command: removes waves from the wave map
                 case "remove":
                 case "-r":
-                    if (userInputSplit.length != 2) {
-                        System.out.println("remove requires 2 arguments, found " + userInputSplit.length);
+                    if (userInputSplit.length < 2 || userInputSplit.length > 3) {
+                        System.out.println("remove requires 1 or 2 arguments, found " + (userInputSplit.length - 1));
                         break;
                     }
 
-                    String idToRemove = userInputSplit[1];
-                    SoundWave removedWave = soundWaveHashMap.remove(idToRemove);
+                    String waveToRemoveId = userInputSplit[1];
+                    String waveMapToRemoveFromId;
+                    if (userInputSplit.length == 3) {
+                        waveMapToRemoveFromId = userInputSplit[2];
+                    } else waveMapToRemoveFromId = "main";
+
+                    WaveMap waveMapToRemoveFrom = WaveMap.getWaveMapWithId(waveMapToRemoveFromId);
+                    if (waveMapToRemoveFrom == null) {
+                        System.out.println("Error: no wavemap with the specified ID exists");
+                        break;
+                    }
+                    SoundWave removedWave = waveMapToRemoveFrom.removeSoundWave(waveToRemoveId);
                     if (removedWave == null) {
-                        System.out.println("Error: wave with the ID " + idToRemove + " could not be found. No removal took place.");
-                    } else System.out.println("Removed wave with ID " + idToRemove + ": \n" + removedWave);
+                        System.out.println("Error: wave with the ID " + waveToRemoveId + " could not be found. No removal took place.");
+                    } else System.out.println("Removed wave with ID " + waveToRemoveId + ": \n" + removedWave + "\n from wavemap " + waveMapToRemoveFromId);
                     break;
 
                 case "list":
                 case "-l":
-                    System.out.println("ALL " + soundWaveHashMap.size() + " WAVES:");
-                    printWaveHashmapValues(soundWaveHashMap);
+                    if (userInputSplit.length == 2) {
+                        String waveMapToListFromId = userInputSplit[1];
+                        WaveMap waveMapToListFrom = WaveMap.getWaveMapWithId(waveMapToListFromId);
+                        if (waveMapToListFrom == null) {
+                            System.out.println("Error: no wavemap with the specified ID exists");
+                            break;
+                        }
+
+                        System.out.println(waveMapToListFrom);
+                    } else if (userInputSplit.length == 1) {
+                        // if no map to list waves from is specified, list every map
+                        for (WaveMap wmap : WaveMap.allWaveMapsArray) {
+                            System.out.println(wmap);
+                        }
+                    }
+                    break;
+
+                case "wavemap":
+                case "-wm":
+                    if (userInputSplit.length != 2) {
+                        System.out.println("wavemap requires 1 argument, found " + (userInputSplit.length - 1));
+                        break;
+                    }
+
+                    String wavemapId = userInputSplit[1];
+                    if (!WaveMap.waveMapExists(wavemapId)) {
+                        // creates a new WaveMap
+                        // because of its constructor, it automatically gets added allWaveMapsArray
+                        // (a public static ArrayList in the WaveMap class)
+                        new WaveMap(wavemapId);
+                        System.out.println("Created a new wavemap, with the id " + wavemapId + " .");
+                    } else System.out.println("Error: a wavemap with the specified ID already exists.");
+                    break;
+
+                case "move":
+                case "-mv":
+                    if (userInputSplit.length != 4) {
+                        System.out.println("move requires 3 arguments, found " + (userInputSplit.length - 1));
+                        break;
+                    }
+
+                    String waveToMoveId = userInputSplit[1];
+                    String wavemapToTakeFromId = userInputSplit[2];
+                    String wavemapToPutInId = userInputSplit[3];
+
+                    if (wavemapToTakeFromId.equals(wavemapToPutInId)) {
+                        System.out.println("Error: origin and destination wavemaps cannot be the same");
+                        break;
+                    }
+
+                    WaveMap wavemapToTakeFrom = WaveMap.getWaveMapWithId(wavemapToTakeFromId);
+                    WaveMap wavemapToPutIn = WaveMap.getWaveMapWithId(wavemapToPutInId);
+
+                    if (wavemapToPutIn == null || wavemapToTakeFrom == null) {
+                        System.out.println("Error: the wavemaps must both exist");
+                        break;
+                    }
+
+                    boolean result = wavemapToPutIn.moveSoundWaveHere(waveToMoveId, wavemapToTakeFromId);
+                    if (result) {
+                        System.out.println("Moved wave " + waveToMoveId + " from wavemap " + wavemapToTakeFromId + " to wavemap " + wavemapToPutInId + ".");
+                    } else System.out.println("Error: wave does not exist in the origin wavemap");
                     break;
 
                 default:
                     System.out.println("Unknown command. Please try again.");
                     break;
             }
+            System.out.println(); // empty line
         }
 
 
